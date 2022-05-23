@@ -2,7 +2,8 @@
 # -*- encoding: utf-8 -*-
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 import os
 import os.path as osp
 import random
@@ -43,31 +44,56 @@ torch.backends.cudnn.deterministic = True
 
 lr_start = 5e-2
 warmup_iters = 1000
-max_iter = 150000  + warmup_iters
+max_iter = 150000 + warmup_iters
 ims_per_gpu = 8
 
 
 def parse_args():
     parse = argparse.ArgumentParser()
-    parse.add_argument('--local_rank', dest='local_rank', type=int, default=-1,)
-    parse.add_argument('--sync-bn', dest='use_sync_bn', action='store_true',)
-    parse.add_argument('--fp16', dest='use_fp16', action='store_true',)
-    parse.add_argument('--port', dest='port', type=int, default=44554,)
-    parse.add_argument('--respth', dest='respth', type=str, default='./res',)
+    parse.add_argument(
+        "--local_rank",
+        dest="local_rank",
+        type=int,
+        default=-1,
+    )
+    parse.add_argument(
+        "--sync-bn",
+        dest="use_sync_bn",
+        action="store_true",
+    )
+    parse.add_argument(
+        "--fp16",
+        dest="use_fp16",
+        action="store_true",
+    )
+    parse.add_argument(
+        "--port",
+        dest="port",
+        type=int,
+        default=44554,
+    )
+    parse.add_argument(
+        "--respth",
+        dest="respth",
+        type=str,
+        default="./res",
+    )
     return parse.parse_args()
+
 
 args = parse_args()
 
 
-
 def set_model():
     net = BiSeNetV2(19)
-    if args.use_sync_bn: net = set_syncbn(net)
+    if args.use_sync_bn:
+        net = set_syncbn(net)
     net.cuda()
     net.train()
     criteria_pre = OhemCELoss(0.7)
     criteria_aux = [OhemCELoss(0.7) for _ in range(4)]
     return net, criteria_pre, criteria_aux
+
 
 def set_syncbn(net):
     if has_apex:
@@ -85,8 +111,10 @@ def set_optimizer(model):
         elif param.dim() == 2 or param.dim() == 4:
             wd_params.append(param)
     params_list = [
-        {'params': wd_params, },
-        {'params': non_wd_params, 'weight_decay': 0},
+        {
+            "params": wd_params,
+        },
+        {"params": non_wd_params, "weight_decay": 0},
     ]
     optim = torch.optim.SGD(
         params_list,
@@ -104,24 +132,27 @@ def set_model_dist(net):
         local_rank = dist.get_rank()
         net = nn.parallel.DistributedDataParallel(
             net,
-            device_ids=[local_rank, ],
-            output_device=local_rank)
+            device_ids=[
+                local_rank,
+            ],
+            output_device=local_rank,
+        )
     return net
 
 
 def set_meters():
     time_meter = TimeMeter(max_iter)
-    loss_meter = AvgMeter('loss')
-    loss_pre_meter = AvgMeter('loss_prem')
-    loss_aux_meters = [AvgMeter('loss_aux{}'.format(i)) for i in range(4)]
+    loss_meter = AvgMeter("loss")
+    loss_pre_meter = AvgMeter("loss_prem")
+    loss_aux_meters = [AvgMeter("loss_aux{}".format(i)) for i in range(4)]
     return time_meter, loss_meter, loss_pre_meter, loss_aux_meters
 
 
 def save_model(states, save_pth):
     logger = logging.getLogger()
-    logger.info('\nsave models to {}'.format(save_pth))
+    logger.info("\nsave models to {}".format(save_pth))
     for name, state in states.items():
-        save_name = 'model_final_{}.pth'.format(name)
+        save_name = "model_final_{}.pth".format(name)
         modelpth = osp.join(save_pth, save_name)
         if dist.is_initialized() and dist.get_rank() == 0:
             torch.save(state, modelpth)
@@ -132,8 +163,9 @@ def train():
     is_dist = dist.is_initialized()
 
     ## dataset
-    dl = get_data_loader('./data/', ims_per_gpu, max_iter,
-            mode='train', distributed=is_dist)
+    dl = get_data_loader(
+        "./data/", ims_per_gpu, max_iter, mode="train", distributed=is_dist
+    )
 
     ## model
     net, criteria_pre, criteria_aux = set_model()
@@ -143,7 +175,7 @@ def train():
 
     ## fp16
     if has_apex and args.use_fp16:
-        net, optim = amp.initialize(net, optim, opt_level='O1')
+        net, optim = amp.initialize(net, optim, opt_level="O1")
 
     ## ddp training
     net = set_model_dist(net)
@@ -152,9 +184,15 @@ def train():
     time_meter, loss_meter, loss_pre_meter, loss_aux_meters = set_meters()
 
     ## lr scheduler
-    lr_schdr = WarmupPolyLrScheduler(optim, power=0.9,
-        max_iter=max_iter, warmup_iter=warmup_iters,
-        warmup_ratio=0.1, warmup='exp', last_epoch=-1,)
+    lr_schdr = WarmupPolyLrScheduler(
+        optim,
+        power=0.9,
+        max_iter=max_iter,
+        warmup_iter=warmup_iters,
+        warmup_ratio=0.1,
+        warmup="exp",
+        last_epoch=-1,
+    )
 
     ## train loop
     for it, (im, lb) in enumerate(dl):
@@ -187,16 +225,23 @@ def train():
             lr = lr_schdr.get_lr()
             lr = sum(lr) / len(lr)
             print_log_msg(
-                it, max_iter, lr, time_meter, loss_meter,
-                loss_pre_meter, loss_aux_meters)
+                it,
+                max_iter,
+                lr,
+                time_meter,
+                loss_meter,
+                loss_pre_meter,
+                loss_aux_meters,
+            )
 
     ## dump the final model and evaluate the result
-    save_pth = osp.join(args.respth, 'model_final.pth')
-    logger.info('\nsave models to {}'.format(save_pth))
+    save_pth = osp.join(args.respth, "model_final.pth")
+    logger.info("\nsave models to {}".format(save_pth))
     state = net.module.state_dict()
-    if dist.get_rank() == 0: torch.save(state, save_pth)
+    if dist.get_rank() == 0:
+        torch.save(state, save_pth)
 
-    logger.info('\nevaluating the final model')
+    logger.info("\nevaluating the final model")
     torch.cuda.empty_cache()
     eval_model(net, 4)
 
@@ -206,13 +251,14 @@ def train():
 def main():
     torch.cuda.set_device(args.local_rank)
     dist.init_process_group(
-        backend='nccl',
-        init_method='tcp://127.0.0.1:{}'.format(args.port),
+        backend="nccl",
+        init_method="tcp://127.0.0.1:{}".format(args.port),
         world_size=torch.cuda.device_count(),
-        rank=args.local_rank
+        rank=args.local_rank,
     )
-    if not osp.exists(args.respth): os.makedirs(args.respth)
-    setup_logger('BiSeNetV2-train', args.respth)
+    if not osp.exists(args.respth):
+        os.makedirs(args.respth)
+    setup_logger("BiSeNetV2-train", args.respth)
     train()
 
 

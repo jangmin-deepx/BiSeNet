@@ -15,7 +15,7 @@ import lib.transform_cv2 as T
 from lib.sampler import RepeatedDistSampler
 from lib.base_dataset import BaseDataset
 
-'''
+"""
 91(thing) + 91(stuff) = 182 classes, label proportions are:
     [0.0901445377, 0.00157896236, 0.00611962763, 0.00494526505, 0.00335260064, 0.00765355955, 0.00772972804, 0.00631509744,
      0.00270457286, 0.000697793344, 0.00114085574, 0.0, 0.00114084131, 0.000705729068, 0.00359758029, 0.00162208938, 0.00598373796,
@@ -41,15 +41,13 @@ from lib.base_dataset import BaseDataset
 
 11 thing classes has no annos, proportions are 0:
     [11, 25, 28, 29, 44, 65, 67, 68, 70, 82, 90]
-'''
-
+"""
 
 
 class CocoStuff(BaseDataset):
-
-    def __init__(self, dataroot, annpath, trans_func=None, mode='train'):
+    def __init__(self, dataroot, annpath, trans_func=None, mode="train"):
         super(CocoStuff, self).__init__(dataroot, annpath, trans_func, mode)
-        self.n_cats = 171 # 91 stuff, 91 thing, 11 of thing have no annos
+        self.n_cats = 171  # 91 stuff, 91 thing, 11 of thing have no annos
         self.lb_ignore = 255
 
         ## label mapping, remove non-existing labels
@@ -60,8 +58,6 @@ class CocoStuff(BaseDataset):
             self.lb_map[ind] = remain.index(ind)
 
         self.to_tensor = T.ToTensor(
-            mean=(0.46962251, 0.4464104,  0.40718787), # coco, rgb
+            mean=(0.46962251, 0.4464104, 0.40718787),  # coco, rgb
             std=(0.27469736, 0.27012361, 0.28515933),
         )
-
-

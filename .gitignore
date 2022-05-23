@@ -121,3 +121,4 @@ openvino/output*
 tis/cpp_client/build/*
 
 tvm/
+pretrained_weight/

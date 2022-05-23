@@ -7,14 +7,13 @@ import torch
 
 
 class WarmupLrScheduler(torch.optim.lr_scheduler._LRScheduler):
-
     def __init__(
-            self,
-            optimizer,
-            warmup_iter=500,
-            warmup_ratio=5e-4,
-            warmup='exp',
-            last_epoch=-1,
+        self,
+        optimizer,
+        warmup_iter=500,
+        warmup_ratio=5e-4,
+        warmup="exp",
+        last_epoch=-1,
     ):
         self.warmup_iter = warmup_iter
         self.warmup_ratio = warmup_ratio
@@ -37,31 +36,31 @@ class WarmupLrScheduler(torch.optim.lr_scheduler._LRScheduler):
         raise NotImplementedError
 
     def get_warmup_ratio(self):
-        assert self.warmup in ('linear', 'exp')
+        assert self.warmup in ("linear", "exp")
         alpha = self.last_epoch / self.warmup_iter
-        if self.warmup == 'linear':
+        if self.warmup == "linear":
             ratio = self.warmup_ratio + (1 - self.warmup_ratio) * alpha
-        elif self.warmup == 'exp':
-            ratio = self.warmup_ratio ** (1. - alpha)
+        elif self.warmup == "exp":
+            ratio = self.warmup_ratio ** (1.0 - alpha)
         return ratio
 
 
 class WarmupPolyLrScheduler(WarmupLrScheduler):
-
     def __init__(
-            self,
-            optimizer,
-            power,
-            max_iter,
-            warmup_iter=500,
-            warmup_ratio=5e-4,
-            warmup='exp',
-            last_epoch=-1,
+        self,
+        optimizer,
+        power,
+        max_iter,
+        warmup_iter=500,
+        warmup_ratio=5e-4,
+        warmup="exp",
+        last_epoch=-1,
     ):
         self.power = power
         self.max_iter = max_iter
         super(WarmupPolyLrScheduler, self).__init__(
-            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch)
+            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch
+        )
 
     def get_main_ratio(self):
         real_iter = self.last_epoch - self.warmup_iter
@@ -72,21 +71,21 @@ class WarmupPolyLrScheduler(WarmupLrScheduler):
 
 
 class WarmupExpLrScheduler(WarmupLrScheduler):
-
     def __init__(
-            self,
-            optimizer,
-            gamma,
-            interval=1,
-            warmup_iter=500,
-            warmup_ratio=5e-4,
-            warmup='exp',
-            last_epoch=-1,
+        self,
+        optimizer,
+        gamma,
+        interval=1,
+        warmup_iter=500,
+        warmup_ratio=5e-4,
+        warmup="exp",
+        last_epoch=-1,
     ):
         self.gamma = gamma
         self.interval = interval
         super(WarmupExpLrScheduler, self).__init__(
-            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch)
+            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch
+        )
 
     def get_main_ratio(self):
         real_iter = self.last_epoch - self.warmup_iter
@@ -95,45 +94,49 @@ class WarmupExpLrScheduler(WarmupLrScheduler):
 
 
 class WarmupCosineLrScheduler(WarmupLrScheduler):
-
     def __init__(
-            self,
-            optimizer,
-            max_iter,
-            eta_ratio=0,
-            warmup_iter=500,
-            warmup_ratio=5e-4,
-            warmup='exp',
-            last_epoch=-1,
+        self,
+        optimizer,
+        max_iter,
+        eta_ratio=0,
+        warmup_iter=500,
+        warmup_ratio=5e-4,
+        warmup="exp",
+        last_epoch=-1,
     ):
         self.eta_ratio = eta_ratio
         self.max_iter = max_iter
         super(WarmupCosineLrScheduler, self).__init__(
-            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch)
+            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch
+        )
 
     def get_main_ratio(self):
         real_iter = self.last_epoch - self.warmup_iter
         real_max_iter = self.max_iter - self.warmup_iter
-        return self.eta_ratio + (1 - self.eta_ratio) * (
-                1 + math.cos(math.pi * self.last_epoch / real_max_iter)) / 2
+        return (
+            self.eta_ratio
+            + (1 - self.eta_ratio)
+            * (1 + math.cos(math.pi * self.last_epoch / real_max_iter))
+            / 2
+        )
 
 
 class WarmupStepLrScheduler(WarmupLrScheduler):
-
     def __init__(
-            self,
-            optimizer,
-            milestones: list,
-            gamma=0.1,
-            warmup_iter=500,
-            warmup_ratio=5e-4,
-            warmup='exp',
-            last_epoch=-1,
+        self,
+        optimizer,
+        milestones: list,
+        gamma=0.1,
+        warmup_iter=500,
+        warmup_ratio=5e-4,
+        warmup="exp",
+        last_epoch=-1,
     ):
         self.milestones = milestones
         self.gamma = gamma
         super(WarmupStepLrScheduler, self).__init__(
-            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch)
+            optimizer, warmup_iter, warmup_ratio, warmup, last_epoch
+        )
 
     def get_main_ratio(self):
         real_iter = self.last_epoch - self.warmup_iter
@@ -146,7 +149,7 @@ if __name__ == "__main__":
     optim = torch.optim.SGD(model.parameters(), lr=1e-3)
 
     max_iter = 20000
-    lr_scheduler = WarmupPolyLrScheduler(optim, 0.9, max_iter, 200, 0.1, 'linear', -1)
+    lr_scheduler = WarmupPolyLrScheduler(optim, 0.9, max_iter, 200, 0.1, "linear", -1)
     lrs = []
     for _ in range(max_iter):
         lr = lr_scheduler.get_lr()[0]
@@ -156,10 +159,9 @@ if __name__ == "__main__":
     import matplotlib
     import matplotlib.pyplot as plt
     import numpy as np
+
     lrs = np.array(lrs)
     n_lrs = len(lrs)
     plt.plot(np.arange(n_lrs), lrs)
     plt.grid()
     plt.show()
-
-

@@ -13,15 +13,16 @@ from torch.nn import BatchNorm2d
 
 
 class ConvBNReLU(nn.Module):
-
     def __init__(self, in_chan, out_chan, ks=3, stride=1, padding=1, *args, **kwargs):
         super(ConvBNReLU, self).__init__()
-        self.conv = nn.Conv2d(in_chan,
-                out_chan,
-                kernel_size = ks,
-                stride = stride,
-                padding = padding,
-                bias = False)
+        self.conv = nn.Conv2d(
+            in_chan,
+            out_chan,
+            kernel_size=ks,
+            stride=stride,
+            padding=padding,
+            bias=False,
+        )
         self.bn = BatchNorm2d(out_chan)
         self.relu = nn.ReLU(inplace=True)
         self.init_weight()
@@ -36,11 +37,11 @@ class ConvBNReLU(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
 
 class UpSample(nn.Module):
-
     def __init__(self, n_chan, factor=2):
         super(UpSample, self).__init__()
         out_chan = n_chan * factor * factor
@@ -54,19 +55,19 @@ class UpSample(nn.Module):
         return feat
 
     def init_weight(self):
-        nn.init.xavier_normal_(self.proj.weight, gain=1.)
+        nn.init.xavier_normal_(self.proj.weight, gain=1.0)
 
 
 class BiSeNetOutput(nn.Module):
-
     def __init__(self, in_chan, mid_chan, n_classes, up_factor=32, *args, **kwargs):
         super(BiSeNetOutput, self).__init__()
         self.up_factor = up_factor
         out_chan = n_classes
         self.conv = ConvBNReLU(in_chan, mid_chan, ks=3, stride=1, padding=1)
         self.conv_out = nn.Conv2d(mid_chan, out_chan, kernel_size=1, bias=True)
-        self.up = nn.Upsample(scale_factor=up_factor,
-                mode='bilinear', align_corners=False)
+        self.up = nn.Upsample(
+            scale_factor=up_factor, mode="bilinear", align_corners=False
+        )
         self.init_weight()
 
     def forward(self, x):
@@ -79,7 +80,8 @@ class BiSeNetOutput(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
     def get_params(self):
         wd_params, nowd_params = [], []
@@ -97,7 +99,7 @@ class AttentionRefinementModule(nn.Module):
     def __init__(self, in_chan, out_chan, *args, **kwargs):
         super(AttentionRefinementModule, self).__init__()
         self.conv = ConvBNReLU(in_chan, out_chan, ks=3, stride=1, padding=1)
-        self.conv_atten = nn.Conv2d(out_chan, out_chan, kernel_size= 1, bias=False)
+        self.conv_atten = nn.Conv2d(out_chan, out_chan, kernel_size=1, bias=False)
         self.bn_atten = BatchNorm2d(out_chan)
         #  self.sigmoid_atten = nn.Sigmoid()
         self.init_weight()
@@ -116,7 +118,8 @@ class AttentionRefinementModule(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
 
 class ContextPath(nn.Module):
@@ -128,8 +131,8 @@ class ContextPath(nn.Module):
         self.conv_head32 = ConvBNReLU(128, 128, ks=3, stride=1, padding=1)
         self.conv_head16 = ConvBNReLU(128, 128, ks=3, stride=1, padding=1)
         self.conv_avg = ConvBNReLU(512, 128, ks=1, stride=1, padding=0)
-        self.up32 = nn.Upsample(scale_factor=2.)
-        self.up16 = nn.Upsample(scale_factor=2.)
+        self.up32 = nn.Upsample(scale_factor=2.0)
+        self.up16 = nn.Upsample(scale_factor=2.0)
 
         self.init_weight()
 
@@ -149,13 +152,14 @@ class ContextPath(nn.Module):
         feat16_up = self.up16(feat16_sum)
         feat16_up = self.conv_head16(feat16_up)
 
-        return feat16_up, feat32_up # x8, x16
+        return feat16_up, feat32_up  # x8, x16
 
     def init_weight(self):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
     def get_params(self):
         wd_params, nowd_params = [], []
@@ -189,7 +193,8 @@ class SpatialPath(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
     def get_params(self):
         wd_params, nowd_params = [], []
@@ -208,12 +213,9 @@ class FeatureFusionModule(nn.Module):
         super(FeatureFusionModule, self).__init__()
         self.convblk = ConvBNReLU(in_chan, out_chan, ks=1, stride=1, padding=0)
         ## use conv-bn instead of 2 layer mlp, so that tensorrt 7.2.3.4 can work for fp16
-        self.conv = nn.Conv2d(out_chan,
-                out_chan,
-                kernel_size = 1,
-                stride = 1,
-                padding = 0,
-                bias = False)
+        self.conv = nn.Conv2d(
+            out_chan, out_chan, kernel_size=1, stride=1, padding=0, bias=False
+        )
         self.bn = nn.BatchNorm2d(out_chan)
         #  self.conv1 = nn.Conv2d(out_chan,
         #          out_chan//4,
@@ -248,7 +250,8 @@ class FeatureFusionModule(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
     def get_params(self):
         wd_params, nowd_params = [], []
@@ -263,15 +266,14 @@ class FeatureFusionModule(nn.Module):
 
 
 class BiSeNetV1(nn.Module):
-
-    def __init__(self, n_classes, aux_mode='train', *args, **kwargs):
+    def __init__(self, n_classes, aux_mode="train", *args, **kwargs):
         super(BiSeNetV1, self).__init__()
         self.cp = ContextPath()
         self.sp = SpatialPath()
         self.ffm = FeatureFusionModule(256, 256)
         self.conv_out = BiSeNetOutput(256, 256, n_classes, up_factor=8)
         self.aux_mode = aux_mode
-        if self.aux_mode == 'train':
+        if self.aux_mode == "train":
             self.conv_out16 = BiSeNetOutput(128, 64, n_classes, up_factor=8)
             self.conv_out32 = BiSeNetOutput(128, 64, n_classes, up_factor=16)
         self.init_weight()
@@ -283,13 +285,13 @@ class BiSeNetV1(nn.Module):
         feat_fuse = self.ffm(feat_sp, feat_cp8)
 
         feat_out = self.conv_out(feat_fuse)
-        if self.aux_mode == 'train':
+        if self.aux_mode == "train":
             feat_out16 = self.conv_out16(feat_cp8)
             feat_out32 = self.conv_out32(feat_cp16)
             return feat_out, feat_out16, feat_out32
-        elif self.aux_mode == 'eval':
-            return feat_out,
-        elif self.aux_mode == 'pred':
+        elif self.aux_mode == "eval":
+            return (feat_out,)
+        elif self.aux_mode == "pred":
             feat_out = feat_out.argmax(dim=1)
             return feat_out
         else:
@@ -299,7 +301,8 @@ class BiSeNetV1(nn.Module):
         for ly in self.children():
             if isinstance(ly, nn.Conv2d):
                 nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)
 
     def get_params(self):
         wd_params, nowd_params, lr_mul_wd_params, lr_mul_nowd_params = [], [], [], []

@@ -14,23 +14,22 @@ import numpy as np
 from lib.sampler import RepeatedDistSampler
 
 
-
 class BaseDataset(Dataset):
-    '''
-    '''
-    def __init__(self, dataroot, annpath, trans_func=None, mode='train'):
+    """ """
+
+    def __init__(self, dataroot, annpath, trans_func=None, mode="train"):
         super(BaseDataset, self).__init__()
-        assert mode in ('train', 'val', 'test')
+        assert mode in ("train", "val", "test")
         self.mode = mode
         self.trans_func = trans_func
 
         self.lb_map = None
 
-        with open(annpath, 'r') as fr:
+        with open(annpath, "r") as fr:
             pairs = fr.read().splitlines()
         self.img_paths, self.lb_paths = [], []
         for pair in pairs:
-            imgpth, lbpth = pair.split(',')
+            imgpth, lbpth = pair.split(",")
             self.img_paths.append(osp.join(dataroot, imgpth))
             self.lb_paths.append(osp.join(dataroot, lbpth))
 
@@ -46,7 +45,7 @@ class BaseDataset(Dataset):
         if not self.trans_func is None:
             im_lb = self.trans_func(im_lb)
         im_lb = self.to_tensor(im_lb)
-        img, label = im_lb['im'], im_lb['lb']
+        img, label = im_lb["im"], im_lb["lb"]
         return img.detach(), label.unsqueeze(0).detach()
 
     def get_image(self, impth, lbpth):
@@ -60,12 +59,9 @@ class BaseDataset(Dataset):
 if __name__ == "__main__":
     from tqdm import tqdm
     from torch.utils.data import DataLoader
-    ds = CityScapes('./data/', mode='val')
-    dl = DataLoader(ds,
-                    batch_size = 4,
-                    shuffle = True,
-                    num_workers = 4,
-                    drop_last = True)
+
+    ds = CityScapes("./data/", mode="val")
+    dl = DataLoader(ds, batch_size=4, shuffle=True, num_workers=4, drop_last=True)
     for imgs, label in dl:
         print(len(imgs))
         for el in imgs:

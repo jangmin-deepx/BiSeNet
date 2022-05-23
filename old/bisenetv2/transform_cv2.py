@@ -10,12 +10,12 @@ import cv2
 import torch
 
 
-
 class RandomResizedCrop(object):
-    '''
+    """
     size should be a tuple of (H, W)
-    '''
-    def __init__(self, scales=(0.5, 1.), size=(384, 384)):
+    """
+
+    def __init__(self, scales=(0.5, 1.0), size=(384, 384)):
         self.scales = scales
         self.size = size
 
@@ -23,7 +23,7 @@ class RandomResizedCrop(object):
         if self.size is None:
             return im_lb
 
-        im, lb = im_lb['im'], im_lb['lb']
+        im, lb = im_lb["im"], im_lb["lb"]
         assert im.shape[:2] == lb.shape[:2]
 
         crop_h, crop_w = self.size
@@ -32,7 +32,8 @@ class RandomResizedCrop(object):
         im = cv2.resize(im, (im_w, im_h))
         lb = cv2.resize(lb, (im_w, im_h), interpolation=cv2.INTER_NEAREST)
 
-        if (im_h, im_w) == (crop_h, crop_w): return dict(im=im, lb=lb)
+        if (im_h, im_w) == (crop_h, crop_w):
+            return dict(im=im, lb=lb)
         pad_h, pad_w = 0, 0
         if im_h < crop_h:
             pad_h = (crop_h - im_h) // 2 + 1
@@ -40,27 +41,27 @@ class RandomResizedCrop(object):
             pad_w = (crop_w - im_w) // 2 + 1
         if pad_h > 0 or pad_w > 0:
             im = np.pad(im, ((pad_h, pad_h), (pad_w, pad_w), (0, 0)))
-            lb = np.pad(lb, ((pad_h, pad_h), (pad_w, pad_w)), 'constant', constant_values=255)
+            lb = np.pad(
+                lb, ((pad_h, pad_h), (pad_w, pad_w)), "constant", constant_values=255
+            )
 
         im_h, im_w, _ = im.shape
         sh, sw = np.random.random(2)
         sh, sw = int(sh * (im_h - crop_h)), int(sw * (im_w - crop_w))
         return dict(
-            im=im[sh:sh+crop_h, sw:sw+crop_w, :].copy(),
-            lb=lb[sh:sh+crop_h, sw:sw+crop_w].copy()
+            im=im[sh : sh + crop_h, sw : sw + crop_w, :].copy(),
+            lb=lb[sh : sh + crop_h, sw : sw + crop_w].copy(),
         )
 
 
-
 class RandomHorizontalFlip(object):
-
     def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, im_lb):
         if np.random.random() < self.p:
             return im_lb
-        im, lb = im_lb['im'], im_lb['lb']
+        im, lb = im_lb["im"], im_lb["lb"]
         assert im.shape[:2] == lb.shape[:2]
         return dict(
             im=im[:, ::-1, :],
@@ -68,19 +69,17 @@ class RandomHorizontalFlip(object):
         )
 
 
-
 class ColorJitter(object):
-
     def __init__(self, brightness=None, contrast=None, saturation=None):
         if not brightness is None and brightness >= 0:
-            self.brightness = [max(1-brightness, 0), 1+brightness]
+            self.brightness = [max(1 - brightness, 0), 1 + brightness]
         if not contrast is None and contrast >= 0:
-            self.contrast = [max(1-contrast, 0), 1+contrast]
+            self.contrast = [max(1 - contrast, 0), 1 + contrast]
         if not saturation is None and saturation >= 0:
-            self.saturation = [max(1-saturation, 0), 1+saturation]
+            self.saturation = [max(1 - saturation, 0), 1 + saturation]
 
     def __call__(self, im_lb):
-        im, lb = im_lb['im'], im_lb['lb']
+        im, lb = im_lb["im"], im_lb["lb"]
         assert im.shape[:2] == lb.shape[:2]
         if not self.brightness is None:
             rate = np.random.uniform(*self.brightness)
@@ -91,45 +90,49 @@ class ColorJitter(object):
         if not self.saturation is None:
             rate = np.random.uniform(*self.saturation)
             im = self.adj_saturation(im, rate)
-        return dict(im=im, lb=lb,)
+        return dict(
+            im=im,
+            lb=lb,
+        )
 
     def adj_saturation(self, im, rate):
-        M = np.float32([
-            [1+2*rate, 1-rate, 1-rate],
-            [1-rate, 1+2*rate, 1-rate],
-            [1-rate, 1-rate, 1+2*rate]
-        ])
+        M = np.float32(
+            [
+                [1 + 2 * rate, 1 - rate, 1 - rate],
+                [1 - rate, 1 + 2 * rate, 1 - rate],
+                [1 - rate, 1 - rate, 1 + 2 * rate],
+            ]
+        )
         shape = im.shape
-        im = np.matmul(im.reshape(-1, 3), M).reshape(shape)/3
+        im = np.matmul(im.reshape(-1, 3), M).reshape(shape) / 3
         im = np.clip(im, 0, 255).astype(np.uint8)
         return im
 
     def adj_brightness(self, im, rate):
-        table = np.array([
-            i * rate for i in range(256)
-        ]).clip(0, 255).astype(np.uint8)
+        table = np.array([i * rate for i in range(256)]).clip(0, 255).astype(np.uint8)
         return table[im]
 
     def adj_contrast(self, im, rate):
-        table = np.array([
-            74 + (i - 74) * rate for i in range(256)
-        ]).clip(0, 255).astype(np.uint8)
+        table = (
+            np.array([74 + (i - 74) * rate for i in range(256)])
+            .clip(0, 255)
+            .astype(np.uint8)
+        )
         return table[im]
 
 
-
-
 class ToTensor(object):
-    '''
+    """
     mean and std should be of the channel order 'bgr'
-    '''
-    def __init__(self, mean=(0, 0, 0), std=(1., 1., 1.)):
+    """
+
+    def __init__(self, mean=(0, 0, 0), std=(1.0, 1.0, 1.0)):
         self.mean = mean
         self.std = std
 
     def __call__(self, im_lb):
-        im, lb = im_lb['im'], im_lb['lb']
-        im = im[:, :, ::-1].transpose(2, 0, 1).astype(np.float32) # to rgb order
+        im, lb = im_lb["im"], im_lb["lb"]
+        im = im[:, :, ::-1].transpose(2, 0, 1).astype(np.float32)  # to rgb order
         im = torch.from_numpy(im).div_(255)
         dtype, device = im.dtype, im.device
         mean = torch.as_tensor(self.mean, dtype=dtype, device=device)[:, None, None]
@@ -140,7 +143,6 @@ class ToTensor(object):
 
 
 class Compose(object):
-
     def __init__(self, do_list):
         self.do_list = do_list
 
@@ -150,9 +152,7 @@ class Compose(object):
         return im_lb
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     #  from PIL import Image
     #  im = Image.open(imgpth)
     #  lb = Image.open(lbpth)
@@ -160,25 +160,24 @@ if __name__ == '__main__':
     #  im.show()
     #  lb.show()
     import cv2
+
     im = cv2.imread(imgpth)
     lb = cv2.imread(lbpth, 0)
     lb = lb * 10
 
-    trans = Compose([
-        RandomHorizontalFlip(),
-        RandomShear(p=0.5, rate=3),
-        RandomRotate(p=0.5, degree=5),
-        RandomScale([0.5, 0.7]),
-        RandomCrop((768, 768)),
-        RandomErasing(p=1, size=(36, 36)),
-        ChannelShuffle(p=1),
-        ColorJitter(
-            brightness=0.3,
-            contrast=0.3,
-            saturation=0.5
-        ),
-        #  RandomEqualize(p=0.1),
-    ])
+    trans = Compose(
+        [
+            RandomHorizontalFlip(),
+            RandomShear(p=0.5, rate=3),
+            RandomRotate(p=0.5, degree=5),
+            RandomScale([0.5, 0.7]),
+            RandomCrop((768, 768)),
+            RandomErasing(p=1, size=(36, 36)),
+            ChannelShuffle(p=1),
+            ColorJitter(brightness=0.3, contrast=0.3, saturation=0.5),
+            #  RandomEqualize(p=0.1),
+        ]
+    )
     #  inten = dict(im=im, lb=lb)
     #  out = trans(inten)
     #  im = out['im']
@@ -187,7 +186,6 @@ if __name__ == '__main__':
     #  cv2.imshow('org', im)
     #  cv2.waitKey(0)
 
-
     ### try merge rotate and shear here
     im = cv2.imread(imgpth)
     lb = cv2.imread(lbpth, 0)
@@ -195,45 +193,46 @@ if __name__ == '__main__':
     lb = cv2.resize(lb, (1024, 512), interpolation=cv2.INTER_NEAREST)
     lb = lb * 10
     inten = dict(im=im, lb=lb)
-    trans1 = Compose([
-        RandomShear(p=1, rate=0.15),
-        #  RandomRotate(p=1, degree=10),
-    ])
-    trans2 = Compose([
-        #  RandomShearRotate(p_shear=1, p_rot=0, rate_shear=0.1, rot_degree=9),
-        RandomHFlipShearRotate(p_flip=0.5, p_shear=1, p_rot=0, rate_shear=0.1, rot_degree=9),
-    ])
+    trans1 = Compose(
+        [
+            RandomShear(p=1, rate=0.15),
+            #  RandomRotate(p=1, degree=10),
+        ]
+    )
+    trans2 = Compose(
+        [
+            #  RandomShearRotate(p_shear=1, p_rot=0, rate_shear=0.1, rot_degree=9),
+            RandomHFlipShearRotate(
+                p_flip=0.5, p_shear=1, p_rot=0, rate_shear=0.1, rot_degree=9
+            ),
+        ]
+    )
     out1 = trans1(inten)
-    im1 = out1['im']
-    lb1 = out1['lb']
+    im1 = out1["im"]
+    lb1 = out1["lb"]
     #  cv2.imshow('lb', lb1)
-    cv2.imshow('org1', im1)
+    cv2.imshow("org1", im1)
     out2 = trans2(inten)
-    im2 = out2['im']
-    lb2 = out2['lb']
+    im2 = out2["im"]
+    lb2 = out2["lb"]
     #  cv2.imshow('lb', lb1)
     #  cv2.imshow('org2', im2)
     cv2.waitKey(0)
-    print(np.sum(im1-im2))
-    print('====')
+    print(np.sum(im1 - im2))
+    print("====")
     ####
 
-
-    totensor = ToTensor(
-        mean=(0.406, 0.456, 0.485),
-        std=(0.225, 0.224, 0.229)
-    )
+    totensor = ToTensor(mean=(0.406, 0.456, 0.485), std=(0.225, 0.224, 0.229))
     #  print(im[0, :2, :2])
     print(lb[:2, :2])
     out = totensor(out)
-    im = out['im']
-    lb = out['lb']
+    im = out["im"]
+    lb = out["lb"]
     print(im.size())
     #  print(im[0, :2, :2])
     #  print(lb[:2, :2])
 
     out = totensor(inten)
-    im = out['im']
+    im = out["im"]
     print(im.size())
     print(im[0, 502:504, 766:768])
-

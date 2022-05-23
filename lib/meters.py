@@ -1,9 +1,8 @@
-
 import time
 import datetime
 
-class TimeMeter(object):
 
+class TimeMeter(object):
     def __init__(self, max_iter):
         self.iter = 0
         self.max_iter = max_iter
@@ -18,14 +17,13 @@ class TimeMeter(object):
         self.curr = time.time()
         interv = self.curr - self.st
         global_interv = self.curr - self.global_st
-        eta = int((self.max_iter-self.iter) * (global_interv / (self.iter+1)))
+        eta = int((self.max_iter - self.iter) * (global_interv / (self.iter + 1)))
         eta = str(datetime.timedelta(seconds=eta))
         self.st = self.curr
         return interv, eta
 
 
 class AvgMeter(object):
-
     def __init__(self, name):
         self.name = name
         self.seq = []
@@ -40,4 +38,3 @@ class AvgMeter(object):
         global_avg = sum(self.global_seq) / len(self.global_seq)
         self.seq = []
         return avg, global_avg
-
